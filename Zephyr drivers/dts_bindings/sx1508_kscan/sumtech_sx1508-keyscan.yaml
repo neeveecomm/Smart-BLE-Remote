@@ -1,0 +1,7 @@
+description: SEMTECH keysan
+
+compatible: "sumtech,sx1508-keyscan"
+
+include: base.yaml
+
+on-bus: i2c

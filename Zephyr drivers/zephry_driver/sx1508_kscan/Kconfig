@@ -1,0 +1,26 @@
+# Keyboard scan configuration options
+
+# Copyright (c) 2019 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig KSCAN_SX1508
+	bool "Keyboard scan drivers"
+	help
+	  Include Keyboard scan drivers in system config.
+
+if KSCAN_SX1508
+
+source "drivers/sx1508_kscan/Kconfig.g
+source "drivers/sx1508_kscan/Kconfig.sx1508"
+
+module = KSCAN_SX1508
+module-str = sx1508_kscan
+source "subsys/logging/Kconfig.template.log_config"
+
+config KSCAN_INIT_PRIORITY
+	int "Keyboard scan driver init priority"
+	default 30
+	help
+	  Keyboard scan device driver initialization priority.
+
+endif # KSCAN_SX1508
