@@ -1,6 +1,6 @@
 description: SEMTECH keysan
 
-compatible: "sumtech,sx1508-keyscan"
+compatible: "semtech,sx1508-keyscan"
 
 include: base.yaml
 
