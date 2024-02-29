@@ -98,39 +98,39 @@ struct sx1509b_config {
 /* Magic values for softreset */
 enum {
 	
-	SX1509B_REG_RESET_MAGIC0 = 0x12,          //  RESET_REG DEFAULT VALUE
+	SX1509B_REG_RESET_MAGIC0 = 0x12,         
 
-	SX1509B_REG_RESET_MAGIC1 = 0x34,          //  RESET_REG DEFAULT VALUE
+	SX1509B_REG_RESET_MAGIC1 = 0x34,          
 };
 
 /* Register bits for SX1509B_REG_CLOCK */
 enum {
-	SX1509B_REG_CLOCK_FOSC_OFF = 0 << 5,         // OFF LED
+	SX1509B_REG_CLOCK_FOSC_OFF = 0 << 5,        
 
-	SX1509B_REG_CLOCK_FOSC_EXT = 1 << 5,         // EXT CLK INPUT
+	SX1509B_REG_CLOCK_FOSC_EXT = 1 << 5,        
 	
-	SX1509B_REG_CLOCK_FOSC_INT_2MHZ = 2 << 5,    // 2MHZ OSCILLATOR
+	SX1509B_REG_CLOCK_FOSC_INT_2MHZ = 2 << 5,   
 };
 
 /* Register bits for SX1509B_REG_MISC */
 enum {
-	SX1509B_REG_MISC_LOG_A = 1 << 3, // LED DRIVER  A
-	SX1509B_REG_MISC_LOG_B = 1 << 7, // LED DRIVER  B
+	SX1509B_REG_MISC_LOG_A = 1 << 3,
+	SX1509B_REG_MISC_LOG_B = 1 << 7, 
 	/* ClkX = fOSC */
-	SX1509B_REG_MISC_FREQ = 1 << 4, // FREQ LED DRIVER CLOCK
+	SX1509B_REG_MISC_FREQ = 1 << 4, 
 };
 
 /* Pin configuration register addresses */
 enum {
-	SX1509B_REG_INPUT_DISABLE = 0x00, // Input buffer disable register
+	SX1509B_REG_INPUT_DISABLE = 0x00,
 	SX1509B_REG_PULL_UP = 0x03,
-	SX1509B_REG_PULLDOWN_DATA =0X00,      //
+	SX1509B_REG_PULLDOWN_DATA =0X00,      
 	SX1509B_REG_PULLUP_DATA= 0xFF,
-	SX1509B_REG_PULL_DOWN = 0x04,     //
+	SX1509B_REG_PULL_DOWN = 0x04,     
 	SX1509B_REG_OPEN_DRAIN = 0x05,
 	SX1509B_REG_DIR = 0x07,
-	sx1509B_REG_DIR_DATA = 0xF0,
-	sx1509B_REG_OPENDRAIN =0x05,
+	SX1509B_REG_DIR_DATA = 0xF0,
+	SX1509B_REG_OPENDRAIN =0x05,
 	SX1509B_REG_OPENDRAIN_DATA =0x0F,
 	SX1509B_REG_KEY_CONFIG =0X14,
 	SX1509B_REG_KEY_CONFIG_DATA=0X7D,
@@ -140,7 +140,7 @@ enum {
 	SX1509B_REG_DATA_WRITE= 0x03,
 	SX1509B_REG_INTERRUPT_MASK = 0x09,
 	SX1509B_REG_INTERRUPT_MASK_ENABLE = 0x0F,
-	SX1509B_REG_INTERRUPT_SENSE = 0x0A,   				 // RegSenseHigh0x0A RegSenseLow0x0B
+	SX1509B_REG_INTERRUPT_SENSE = 0x0A,   				 
 	SX1509B_REG_SENSE = 0x0A,
 	SX1509B_REG_SENSE_FALLING_EDGE_TRIG = 0X00,
 	SX1509B_REG_KEY_DATA = 0x15, 
@@ -166,7 +166,7 @@ enum {
 };
 
 /* Intensity register addresses for all 16 pins */
-static const uint8_t intensity_registers[16] = {0x2a, 0x2d, 0x30, 0x33, // LED DRIVER
+static const uint8_t intensity_registers[16] = {0x2a, 0x2d, 0x30, 0x33, 
 						0x36, 0x3b, 0x40, 0x45, 0x4a, 0x4d,
 						0x50, 0x53, 0x56, 0x5b, 0x60, 0x65};
 
@@ -225,6 +225,7 @@ static int sx1509b_handle_interrupt(const struct device *dev)
 	ret =i2c_write_read_dt(&cfg->bus, &key_data, 1, &key_data_rx, 1);
 
 	if (ret != 0) {
+         LOG_ERR("keydata");
 		goto out;
 	}
 
@@ -240,7 +241,7 @@ static int sx1509b_handle_interrupt(const struct device *dev)
 		 ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready interrupt clear\n");
+                LOG_ERR("the i2c device not ready interrupt clear\n");
         }
       
 out:
@@ -327,6 +328,8 @@ static int sx1509b_config(const struct device *dev, gpio_pin_t pin, gpio_flags_t
 					   drv_data->led_drv_enable);
 
 		if (rc) {
+
+	          
 			goto out;
 		}
 	}
@@ -338,6 +341,7 @@ static int sx1509b_config(const struct device *dev, gpio_pin_t pin, gpio_flags_t
 		} else {
 			/* Open source not supported */
 			rc = -ENOTSUP;
+			
 			goto out;
 		}
 	}
@@ -410,8 +414,10 @@ static int port_get(const struct device *dev, gpio_port_value_t *value)
 
 	/* Can't do I2C bus operations from an ISR */
 	if (k_is_in_isr()) {
+	
 		return -EWOULDBLOCK;
 	}
+	
 
 	k_sem_take(&drv_data->lock, K_FOREVER);
 
@@ -420,6 +426,7 @@ static int port_get(const struct device *dev, gpio_port_value_t *value)
 	rc = i2c_write_read_dt(&cfg->bus, &cmd, sizeof(cmd), &pin_data, sizeof(pin_data));
 	LOG_DBG("read %04x got %d", sys_be16_to_cpu(pin_data), rc);
 	if (rc != 0) {
+		 
 		goto out;
 	}
 
@@ -550,21 +557,25 @@ static int sx1509b_init(const struct device *dev)
 	const struct sx1509b_config *cfg = dev->config;
 	struct sx1509b_drv_data *drv_data = dev->data;
 	int rc;
+			
    uint8_t ret;
 	if (!device_is_ready(cfg->bus.bus)) {
+
 		LOG_ERR("I2C bus not ready");
 		rc = -ENODEV;
 		goto out;
 	}
-
+	
 #ifdef CONFIG_GPIO_SX1509B_INTERRUPT
 	drv_data->dev = dev;
 
 	if (!gpio_is_ready_dt(&cfg->nint_gpio)) {
 		LOG_ERR("Interrupt not ready");
+				
 		rc = -ENODEV;
 		goto out;
 	}
+			
 	k_work_init(&drv_data->work, sx1509b_work_handler);
 
 	gpio_pin_configure_dt(&cfg->nint_gpio, GPIO_INPUT);
@@ -618,21 +629,21 @@ static int sx1509b_init(const struct device *dev)
 
 	/*Configures direction for each IO. output => 0 , Input => 1 */
         buf[0] = SX1509B_REG_DIR;
-        buf[1] = sx1509B_REG_DIR_DATA;
+        buf[1] = SX1509B_REG_DIR_DATA;
         ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready dir_data \n");
+                LOG_ERR("the i2c device not ready dir_data \n");
         }
 
 /*Enables open drain operation for  IO0 to I03*/
-        buf[0] = sx1509B_REG_OPENDRAIN;
+        buf[0] = SX1509B_REG_OPENDRAIN;
         buf[1] = SX1509B_REG_OPENDRAIN_DATA;
 
         ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready\n");
+                LOG_ERR("the i2c device not ready\n");
         }
 
 /*Enables the pull-down for each  IO*/
@@ -641,7 +652,7 @@ static int sx1509b_init(const struct device *dev)
          ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready\n");
+                LOG_ERR("the i2c device not ready\n");
         }
 
 /*Enables debouncing for each [input-configured] IO*/
@@ -651,7 +662,7 @@ static int sx1509b_init(const struct device *dev)
        ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready\n");
+                LOG_ERR("the i2c device not ready\n");
         }
 
 /*Configure debouncing Time*/
@@ -660,7 +671,7 @@ static int sx1509b_init(const struct device *dev)
         ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready\n");
+                LOG_ERR("the i2c device not ready\n");
         };
 
 /*Configure number of keypad ROWs and column*/
@@ -669,7 +680,7 @@ static int sx1509b_init(const struct device *dev)
          ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready\n");
+                LOG_ERR("the i2c device not ready\n");
         }
 
 /*Configure Oscillator frequency (fOSC) source*/
@@ -678,7 +689,7 @@ static int sx1509b_init(const struct device *dev)
          ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready\n");
+                LOG_ERR("the i2c device not ready\n");
         }
 
 /*Configures which [input-configured] IO will trigger an interrupt on NINT pin*/
@@ -687,7 +698,7 @@ static int sx1509b_init(const struct device *dev)
          ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready\n");
+                LOG_ERR("the i2c device not ready\n");
         }
 
 /*Configures EDGE SENSE*/
@@ -696,12 +707,13 @@ static int sx1509b_init(const struct device *dev)
 		 ret = i2c_write_dt(&cfg->bus, buf, sizeof(buf));
         if (ret != 0)
         {
-                printf("the i2c device not ready\n");
+                LOG_ERR("the i2c device not ready\n");
         }
 
 
 out:
 	if (rc != 0) {
+		
 		LOG_ERR("%s init failed: %d", dev->name, rc);
 	} else {
 		LOG_INF("%s init ok", dev->name);
@@ -756,11 +768,11 @@ int sx1509b_led_intensity_pin_configure(const struct device *dev, gpio_pin_t pin
 	rc = i2c_reg_write_word_be(&cfg->bus, SX1509B_REG_LED_DRV_ENABLE, drv_data->led_drv_enable);
 
 	/* Set intensity to 0 */
-	if (rc == 0) {
-		rc = i2c_reg_write_byte_be(&cfg->bus, intensity_registers[pin], 0);
-	} else {
-		goto out;
-	}
+	// if (rc == 0) {
+	// 	rc = i2c_reg_write_byte_be(&cfg->bus, intensity_registers[pin], 0);
+	// } else {
+	// 	goto out;
+	// }
 
 	pins->input_disable |= BIT(pin);
 	pins->pull_up &= ~BIT(pin);
