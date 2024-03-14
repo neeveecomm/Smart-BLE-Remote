@@ -133,7 +133,8 @@ static bool sx1508_process_keyscan_data(const struct device *dev)
 	int col;
 	int err;
 
-	err = i2c_burst_read_dt(&config->i2c, REG_KEY_DATA, key, sizeof(key));
+	uint8_t key_data = REG_KEY_DATA;
+	err = i2c_write_read_dt(&config->i2c, &key_data, 1, &key, sizeof(key));
 	if (err) {
 		LOG_WRN("Failed to to read SX1508 key data (err %d)", err);
 		/* Reprocess */
@@ -150,25 +151,18 @@ static bool sx1508_process_keyscan_data(const struct device *dev)
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 	{
-
-		for (row = 0; row < SX1508_KEYSCAN_ROWS; row++) {
-			find_zero_indexes(key, &row, &col);
-
-			if ((row) && (col)) {
-				pressed = false;
-			}
-
-			if (data->kscan_cb == NULL) {
-				continue;
-			}
-
-			for (col = 0; col < SX1508_KEYSCAN_COLS; col++) {
-				if (changed & BIT(col)) {
-					data->kscan_cb(data->parent, row, col, state & BIT(col));
-				}
-			}
+		find_zero_indexes(key, &row, &col);
+		if ((row) && (col)) {
+			pressed = false;
 		}
 
+		if (data->kscan_cb == NULL) {
+			goto out;
+		}
+
+		data->kscan_cb(data->parent, row, col, state & BIT(col));
+
+	out:
 		k_mutex_unlock(&data->lock);
 
 		return pressed;
@@ -267,7 +261,7 @@ static int kscan_sx1508_init(const struct device *dev)
 		}
 
 		err = i2c_reg_write_byte_dt(&config->i2c, REG_RESET,
-					    REG_RESET_MAGIC0); // not
+					    REG_RESET_MAGIC0); 
 		if (err != 0) {
 			printk("%s: reset m0 failed: %d\n", dev->name, err);
 		}
@@ -377,16 +371,16 @@ static const struct kscan_driver_api kscan_sx1508_api = {
 	.config = kscan_sx1508_config,
 };
 
-#define KSCAN_SX1508_DEVICE(id)                                                                     \
-	static const struct kscan_sx1508_cfg kscan_sx1508_##id##_cfg = {                           		\
-		.i2c = I2C_DT_SPEC_INST_GET(id),                                                   			\
-		.irq_enabled = true,                                                               			\
-		.irq = GPIO_DT_SPEC_INST_GET(id, nint_gpios),                                      			\
-	};                                                                                         		\
-	                                                                                          		\ 
-  static struct kscan_sx1508_data kscan_sx1508_##id##_data;                                         \
-	                                                                                                \                
-         DEVICE_DT_INST_DEFINE(id, &kscan_sx1508_init, NULL, &kscan_sx1508_##id##_data,           	\
+#define KSCAN_SX1508_DEVICE(id)                                                                    \
+	static const struct kscan_sx1508_cfg kscan_sx1508_##id##_cfg = {                           \
+		.i2c = I2C_DT_SPEC_INST_GET(id),                                                   \
+		.irq_enabled = true,                                                               \
+		.irq = GPIO_DT_SPEC_INST_GET(id, nint_gpios),                                      \
+	};                                                                                         \
+	\ 
+  static struct kscan_sx1508_data kscan_sx1508_##id##_data;                                        \
+	\                
+         DEVICE_DT_INST_DEFINE(id, &kscan_sx1508_init, NULL, &kscan_sx1508_##id##_data,            \
 			       &kscan_sx1508_##id##_cfg, POST_KERNEL, 90, &kscan_sx1508_api);
 
 DT_INST_FOREACH_STATUS_OKAY(KSCAN_SX1508_DEVICE)
