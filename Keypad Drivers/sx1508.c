@@ -112,7 +112,7 @@ void find_zero_indexes(uint8_t val, int *row, int *column)
 				if (*column == -1) {
 					*column = i;
 					return; // Found both row and column indexes, return
-				}
+				}             
 			}
 		}
 	}

@@ -15,7 +15,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/kscan_sx1508.h>
 
-#define LOG_LEVEL LOG_LEVEL_DBG
+#define LOG_LEVEL LOG_LEVEL_DBG         
 
 LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
 
