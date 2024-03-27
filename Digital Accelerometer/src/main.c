@@ -1,55 +1,82 @@
+/*
+ * Copyright (c) 2019 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
-#include <zephyr/devicetree.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/drivers/i2c.h>
-#include <zephyr/sys/printk.h>
 
-#define SLAVE_ADDRESS 0x18
-#define REG_ADDRESS 0x12
+#define LOG_LEVEL LOG_LEVEL_DBG
 
-#define I2C_NODE DT_NODELABEL(mysensor)
-struct i2c_dt_spec dev_i2c = I2C_DT_SPEC_GET(I2C_NODE);
+LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
 
-void tt_i2c_write(uint8_t slaveAddr, uint8_t regAddr)
+#define I2C0_NODE DT_NODELABEL(fxls8974)
+
+static const struct i2c_dt_spec i2c_node = I2C_DT_SPEC_GET(I2C0_NODE);
+
+static struct device *dev = DEVICE_DT_GET(DT_NODELABEL(fxls8974));
+
+static void fetch_and_display(const struct device *sensor)
 {
-	uint8_t buf;
+	static unsigned int count;
+	struct sensor_value accel[3];  
+	// const char *overrun = "";
+	int rc = sensor_sample_fetch(sensor);
 
-	buf = regAddr;
+	++count;
 
-	i2c_write_dt(&dev_i2c, &buf, sizeof(buf));
-	return;
-}
-
-uint8_t tt_i2c_read(uint8_t slaveAddr)
-{
-	uint8_t data;
-	i2c_read_dt(&dev_i2c, &data, sizeof(data));
-	return data;
-}
-
-void MEASURE_DATA(void)
-{
-	uint32_t data;
-
-	tt_i2c_write(SLAVE_ADDRESS, REG_ADDRESS);
-	data = tt_i2c_read(SLAVE_ADDRESS);
-	printk("read  data : %02d \n", data);
-
-	k_sleep(K_MSEC(1000));
-}
-
-void main()
-{
-
-	while (1)
-	{
-		if (!device_is_ready(dev_i2c.bus))
-		{
-			printk("I2C bus %s is not ready!\n\r", dev_i2c.bus->name);
-			return;
-		}
-		// MEASURE_RELATIVE_HUMIDITY_NO_HOLD_MASTER_MODE ();
-
-		MEASURE_DATA();
+	if (rc == 0) {
+		rc = sensor_channel_get(sensor,
+					SENSOR_CHAN_ACCEL_XYZ,
+					accel);
 	}
+	if (rc < 0) {
+		printk("ERROR: Update failed: %d\n", rc);
+	} else {
+		printk("X = %f, Y = %f, Z = %f\n",
+		       sensor_value_to_double(&accel[0]),
+		       sensor_value_to_double(&accel[1]),
+		       sensor_value_to_double(&accel[2]));
+	}
+
+		printk("\n");
+	
+}
+
+
+int main(void)
+{
+	//  const struct device *sensor;
+    
+     printk("enter the program\n");
+
+	// int err;
+
+	if (!device_is_ready(dev)) {
+		printk("Device %s is not ready\n", dev->name);
+		
+	}
+
+
+	if (!device_is_ready(i2c_node.bus))
+	{
+		printk("I2C bus %s is not ready! \n\r", i2c_node.bus->name);
+	}
+
+
+
+	while (true) {
+		fetch_and_display(dev);
+
+		
+		// sample_fetch(dev,SENSOR_CHAN_ACCEL_XYZ);
+
+		k_sleep(K_MSEC(2000));
+	}
+
 }
