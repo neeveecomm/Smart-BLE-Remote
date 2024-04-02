@@ -1,0 +1,39 @@
+# FXLS8974CF 3-axis accelerometer driver
+
+
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig FXLS8974CF
+	bool "fxls8974cf I2C accelerometer sensor driver"
+	default y
+	select I2C 
+        select HAS_STMEMSC
+	help
+	  Enable driver for FXLS8974CF accelerometer sensor driver
+
+if FXLS8974CF
+
+choice FXLS8974CF_ACCEL_RANGE
+	prompt "Acceleration measurement range"
+	default FXLS8974CF_ACCEL_RANGE_RUNTIME
+	help
+	  Initial measurement full scale range for acceleration values.
+
+config FXLS8974CF_ACCEL_RANGE_RUNTIME
+	bool "Set at runtime"
+
+config FXLS8974CF_ACCEL_RANGE_2G
+	bool "+/-2g"
+
+config FXLS8974CF_ACCEL_RANGE_4G
+	bool "+/-4g"
+
+config FXLS8974CF_ACCEL_RANGE_8G
+	bool "+/-8g"
+
+config FXLS8974CF_ACCEL_RANGE_16G
+	bool "+/-16g"
+
+endchoice
+
+endif # FXLS8974CF

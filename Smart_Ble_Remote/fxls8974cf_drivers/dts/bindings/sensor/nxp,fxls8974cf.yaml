@@ -1,0 +1,8 @@
+# Copyright (c) 2019 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+description: NXP Microelectronics fxls8974cf 3-axis accelerometer
+
+compatible: "nxp,fxls8974cf"
+
+include: "i2c-device.yaml"

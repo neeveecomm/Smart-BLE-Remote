@@ -1,0 +1,12 @@
+# Copyright (c) 2019 - 2021 Henrik Brix Andersen <henrik@brixandersen.dk>
+# SPDX-License-Identifier: Apache-2.0
+
+config KSCAN_SX1508
+	bool "sx1508 keyscan driver"
+	default n
+	help
+	  Enable keyscan driver for SX1508.
+
+	  The SX1508 is a memory mapping, multifunction BUTTON
+	  controller driver. The controller supports matrix key scan
+	  circuit of up to 4x4 keys.
