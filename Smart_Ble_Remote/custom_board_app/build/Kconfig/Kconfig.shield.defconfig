@@ -1,5 +1,0 @@
-osource "c:/projects/smart_ble_remote/boards/shields/*/Kconfig.defconfig"
-osource "c:/projects/boards/shields/*/Kconfig.defconfig"
-osource "c:/projects/kscan_sx1508/boards/shields/*/Kconfig.defconfig"
-osource "c:/projects/kscan_sx1508_1/boards/shields/*/Kconfig.defconfig"
-osource "C:/ncs/v2.5.0/nrf/boards/shields/*/Kconfig.defconfig"

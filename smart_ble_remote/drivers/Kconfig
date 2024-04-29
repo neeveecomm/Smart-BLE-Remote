@@ -1,0 +1,13 @@
+# Copyright (c) 2021 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+
+
+menu "Drivers"
+rsource "sensor/Kconfig"
+endmenu
+
+menu "Kscan"
+rsource "kscan/Kconfig"
+endmenu
+

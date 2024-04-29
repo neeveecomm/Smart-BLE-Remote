@@ -1,0 +1,11 @@
+# Copyright (c) 2021 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# road to 9486 :(
+menu "Zephyr"
+source "Kconfig.zephyr"
+endmenu
+
+rsource "drivers/Kconfig"
+
