@@ -1,3 +1,0 @@
-osource "c:/projects/smart_ble_remote/boards/shields/*/Kconfig.shield"
-osource "C:/projects/smart_ble_remote/boards/shields/*/Kconfig.shield"
-osource "C:/ncs/v2.6.0/nrf/boards/shields/*/Kconfig.shield"
