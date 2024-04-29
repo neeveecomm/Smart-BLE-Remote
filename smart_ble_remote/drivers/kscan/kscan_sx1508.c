@@ -23,6 +23,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/drivers/gpio/gpio_utils.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 
 #define REG_DIR                     0x07
 #define REG_DIR_DATA                0xF0
@@ -44,8 +45,10 @@
 #define REG_DATA_WRITE              0x03
 #define REG_INTERRUPT_MASK          0x09
 #define REG_INTERRUPT_MASK_ENABLE   0x0F
-#define REG_SENSE                   0x0A
+#define REG_SENSE_HIGH              0x0A
+#define REG_SENSE_LOW				0X0B
 #define REG_SENSE_FALLING_EDGE_TRIG 0x00
+#define REG_SENSE_FALLING_EDGE_TRIG_1 0x00
 #define REG_KEY_DATA                0x15
 #define REG_INTERRUPT_SOURCE        0x0C
 #define REG_INTERRUPT_CLEAR_FLAG    0xFF
@@ -58,9 +61,9 @@
 #define SX1508_KEYSCAN_COLS          4
 #define SX1508_KEYSCAN_DATA_SIZE     6
 
-#define KEYSCAN_DEBOUNCE_MSEC       50
+#define KEYSCAN_DEBOUNCE_MSEC       25
 
-#define SX1508_DISP_DATA_SIZE        6
+#define SX1508_DISP_DATA_SIZE        6 
 
 #define SX1508_KEYSCAN_IRQ_THREAD_STACK_SIZE 400
 #define SX1508_KEYSCAN_IRQ_THREAD_PRIO       2
@@ -89,7 +92,7 @@ struct kscan_sx1508_data {
 	struct k_timer timer;
 	uint16_t key_state[SX1508_KEYSCAN_ROWS];
 
-	K_KERNEL_STACK_MEMBER(irq_thread_stack, SX1508_KEYSCAN_IRQ_THREAD_STACK_SIZE);
+	K_KERNEL_STACK_MEMBER(irq_thread_stack,CONFIG_SX1508_KEYSCAN_IRQ_THREAD_STACK_SIZE);  //
 #endif /* CONFIG_SX1508_KEYSCAN */
 };
 
@@ -116,7 +119,7 @@ void find_zero_indexes(uint8_t val, int *row, int *column)
 		}
 	}
 }
-
+	
 #ifdef CONFIG_KSCAN_SX1508
 static bool sx1508_process_keyscan_data(const struct device *dev)
 {
@@ -127,9 +130,13 @@ static bool sx1508_process_keyscan_data(const struct device *dev)
 	bool pressed = false;
 	uint8_t buf[2];
 	uint16_t state;
+    uint16_t changed;
 	int row;
 	int col;
 	int err;
+
+	changed=gpio_pin_get_dt(&config->irq);
+
       
 	uint8_t key_data = REG_KEY_DATA;
 	err = i2c_write_read_dt(&config->i2c, &key_data, 1, &key, sizeof(key));
@@ -158,17 +165,25 @@ static bool sx1508_process_keyscan_data(const struct device *dev)
 			goto out;
 		}
 
-		data->kscan_cb(data->parent, row, col, state & BIT(col));
+		data->kscan_cb(data->parent, row, col,changed);
 
+     pressed =false;
+    
 	out:
 		k_mutex_unlock(&data->lock);
 
-		return pressed;
+		return changed;
 	}
+
+
 }
+
 
 static void sx1508_irq_thread(struct kscan_sx1508_data *data)
 {
+	const struct kscan_sx1508_cfg *config;
+	uint8_t buf[2];
+	int err;
 	bool pressed;
 
 	while (true) {
@@ -180,9 +195,11 @@ static void sx1508_irq_thread(struct kscan_sx1508_data *data)
 		} while (pressed);
 	}
 }
+
+struct kscan_sx1508_data *data_cb = NULL;
+	const struct kscan_sx1508_cfg *config_cb = NULL;
 static void sx1508_irq_callback(const struct device *gpiob, struct gpio_callback *cb, uint32_t pins)
 {
-
 	struct kscan_sx1508_data *data;
 
 	ARG_UNUSED(gpiob);
@@ -220,7 +237,10 @@ static int kscan_sx1508_init(const struct device *dev)
 
 	const struct kscan_sx1508_cfg *config = dev->config;
 	struct kscan_sx1508_data *data = dev->data;
+	config_cb=config;
+	data_cb=data;
 	int err;
+	int button;
 
 	data->dev = dev;
 
@@ -228,6 +248,7 @@ static int kscan_sx1508_init(const struct device *dev)
 		printk("sx1508 parent device not ready\n");
 		return -EINVAL;
 	}
+
 
 #ifdef CONFIG_KSCAN_SX1508
 	k_mutex_init(&data->lock);
@@ -246,7 +267,7 @@ static int kscan_sx1508_init(const struct device *dev)
 		/* Flush key data before enabling interrupt */
 		err = i2c_burst_read_dt(&config->i2c, REG_DATA, keys, sizeof(keys));
 		if (err) {
-			LOG_ERR("Failed to to read SX1508 key data");
+			LOG_ERR("Failed to to read sx1508 key data");
 			return -EIO;
 		}
 
@@ -331,44 +352,37 @@ static int kscan_sx1508_init(const struct device *dev)
 		}
 
 		/*Configures EDGE SENSE*/
-		buf[0] = REG_SENSE;
+		buf[0] = REG_SENSE_HIGH;
 		buf[1] = REG_SENSE_FALLING_EDGE_TRIG;
 		err = i2c_write_dt(&config->i2c, buf, sizeof(buf));
 		if (err != 0) {
 			LOG_ERR(" i2c device not ready \n");
 		}
 
-		gpio_pin_configure_dt(&config->irq, GPIO_INPUT);
-		if (err) {
-			LOG_ERR("Failed to configure IRQ pin (err %d)", err);
-			return -EINVAL;
-		}
+		gpio_pin_configure_dt(&config->irq, GPIO_INPUT | GPIO_ACTIVE_LOW );
 
-		gpio_init_callback(&data->irq_cb,&sx1508_irq_callback, BIT(config->irq.pin));
+		gpio_init_callback(&data->irq_cb, sx1508_irq_callback, BIT(config->irq.pin));
 
 		gpio_add_callback(config->irq.port, &data->irq_cb);
-		if (err) {
-			LOG_ERR("Failed to add IRQ callback (err %d)", err);
-			return -EINVAL;
-		}
 
-		gpio_pin_interrupt_configure_dt(&config->irq, GPIO_INT_EDGE_FALLING);
-		if (err) {
-			LOG_ERR("Failed to configure IRQ pin flags (err %d)",
-				err);
-			return -EINVAL;
-		}
+		gpio_pin_interrupt_configure_dt(&config->irq, GPIO_INT_EDGE_TO_ACTIVE);
+
+		// gpio_pin_interrupt_configure_dt(&config->irq, GPIO_INT_EDGE_FALLING);
+
+
 	}
 
 	k_thread_create(&data->irq_thread, data->irq_thread_stack,
-			SX1508_KEYSCAN_IRQ_THREAD_STACK_SIZE, (k_thread_entry_t)sx1508_irq_thread,
-			data, NULL, NULL, K_PRIO_COOP(SX1508_KEYSCAN_IRQ_THREAD_PRIO), 0,
+			CONFIG_SX1508_KEYSCAN_IRQ_THREAD_STACK_SIZE, (k_thread_entry_t)sx1508_irq_thread,
+			data, NULL, NULL, K_PRIO_COOP(CONFIG_SX1508_KEYSCAN_IRQ_THREAD_PRIO), 0,
 			K_NO_WAIT);
 
 #endif
 
 	return 0;
 }
+
+// static const struct gpio_driver_api api_table
 
 static const struct kscan_driver_api kscan_sx1508_api = {
 	.config = kscan_sx1508_config,
@@ -384,6 +398,6 @@ static const struct kscan_driver_api kscan_sx1508_api = {
   static struct kscan_sx1508_data kscan_sx1508_##id##_data;                                        \
 	\                
          DEVICE_DT_INST_DEFINE(id, &kscan_sx1508_init, NULL, &kscan_sx1508_##id##_data,            \
-			       &kscan_sx1508_##id##_cfg, POST_KERNEL, 90, &kscan_sx1508_api);
+			       &kscan_sx1508_##id##_cfg, POST_KERNEL, CONFIG_KSCAN_INIT_PRIORITY, &kscan_sx1508_api);
 
 DT_INST_FOREACH_STATUS_OKAY(KSCAN_SX1508_DEVICE)

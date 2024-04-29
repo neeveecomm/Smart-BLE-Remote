@@ -1,10 +1,11 @@
 {
     "files.associations": {
-        "array": "c",
-        "string": "c",
-        "string_view": "c",
-        "byteorder.h": "c",
-        "util.h": "c"
+        "app_nfc.h": "c",
+        "*.tcc": "c",
+        "i2c.h": "c",
+        "input-event-codes.h": "c",
+        "bit": "c",
+        "limits": "c"
     },
     "nrf-connect.topdir": "${nrf-connect.sdk:2.6.0}",
     "nrf-connect.toolchain.path": "${nrf-connect.toolchain:2.6.0}"
