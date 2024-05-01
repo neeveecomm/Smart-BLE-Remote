@@ -56,4 +56,4 @@ click on the build configuration to compile project
 ![](images/build.png)
 
 From the Actions View, click Flash to flash the application to the board. You can open the Terminal Panel to see the progress of the flashing
-
+![](images/flash.png)
