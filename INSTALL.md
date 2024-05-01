@@ -1,7 +1,7 @@
 # SMART BLE REMOTE
 Introducing our Smart BLE Remote Development Kit, designed to enhance your control experience with a variety of options, including keypad input, motion-based control, and voice activation.
 
-![](images/smart_ble_remote.png)
+![](images/smart_ble_remote.jpg)
 
 ## Software requirements​
 To install the prerequisites for developing with nRF Connect for Visual Studio Code, follow these:
