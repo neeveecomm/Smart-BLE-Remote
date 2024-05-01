@@ -15,7 +15,7 @@ Install the [Visual Studio Code](https://code.visualstudio.com/) download page a
 
 After installing Visual Studio Code, open it and navigate to the Extensions view by clicking on the square icon on the sidebar or by pressing Ctrl+Shift+X. Search for "nRF Connect" in the Extensions Marketplace. Look for the "nRF Connect for Visual Studio Code" extension pack and click the "Install" button.
      
-![](images/nrf_extension.png)
+![](images/extension_pack.png)
 
 #### Install Toolchain
 The toolchain is a set of tools that are used together to build nRF Connect SDK applications. It includes the assembler, compiler, linker, and CMake, among other tools.
