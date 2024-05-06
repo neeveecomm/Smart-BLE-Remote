@@ -131,12 +131,15 @@ static bool sx1508_process_keyscan_data(const struct device *dev)
 	uint8_t buf[2];
 	uint16_t state;
     uint16_t changed;
+	int interrupt_pin_state;
 	int row;
 	int col;
 	int err;
 
-	changed=gpio_pin_get_dt(&config->irq);
+	interrupt_pin_state = gpio_pin_get_dt(&config->irq);
 
+	if (interrupt_pin_state == true)
+	    pressed = true;
       
 	uint8_t key_data = REG_KEY_DATA;
 	err = i2c_write_read_dt(&config->i2c, &key_data, 1, &key, sizeof(key));
@@ -157,33 +160,23 @@ static bool sx1508_process_keyscan_data(const struct device *dev)
 	k_mutex_lock(&data->lock, K_FOREVER);
 	{
 		find_zero_indexes(key, &row, &col);
-		if ((row) && (col)) {
-			pressed = false;
-		}
 
 		if (data->kscan_cb == NULL) {
 			goto out;
 		}
 
-		data->kscan_cb(data->parent, row, col,changed);
+		data->kscan_cb(data->parent, row, col, pressed);
 
-     pressed =false;
-    
 	out:
 		k_mutex_unlock(&data->lock);
 
-		return changed;
+		return pressed;
 	}
-
-
 }
 
 
 static void sx1508_irq_thread(struct kscan_sx1508_data *data)
 {
-	const struct kscan_sx1508_cfg *config;
-	uint8_t buf[2];
-	int err;
 	bool pressed;
 
 	while (true) {
@@ -201,7 +194,6 @@ struct kscan_sx1508_data *data_cb = NULL;
 static void sx1508_irq_callback(const struct device *gpiob, struct gpio_callback *cb, uint32_t pins)
 {
 	struct kscan_sx1508_data *data;
-
 	ARG_UNUSED(gpiob);
 	ARG_UNUSED(pins);
 
@@ -214,6 +206,7 @@ static void sx1508_timer_callback(struct k_timer *timer)
 {
 
 	struct kscan_sx1508_data *data;
+	
 
 	data = CONTAINER_OF(timer, struct kscan_sx1508_data, timer);
 	k_sem_give(&data->irq_sem);
@@ -248,7 +241,6 @@ static int kscan_sx1508_init(const struct device *dev)
 		printk("sx1508 parent device not ready\n");
 		return -EINVAL;
 	}
-
 
 #ifdef CONFIG_KSCAN_SX1508
 	k_mutex_init(&data->lock);
@@ -366,9 +358,6 @@ static int kscan_sx1508_init(const struct device *dev)
 		gpio_add_callback(config->irq.port, &data->irq_cb);
 
 		gpio_pin_interrupt_configure_dt(&config->irq, GPIO_INT_EDGE_TO_ACTIVE);
-
-		// gpio_pin_interrupt_configure_dt(&config->irq, GPIO_INT_EDGE_FALLING);
-
 
 	}
 

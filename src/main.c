@@ -45,7 +45,7 @@
 
 #define OUTPUT_REPORT_MAX_LEN 1
 #define OUTPUT_REPORT_BIT_MASK_CAPS_LOCK 0x02
-#define INPUT_REP_KEYS_REF_ID 1
+#define KEYPAD_INPUT_REP_KEYS_REF_ID 1
 #define OUTPUT_REP_KEYS_REF_ID 0
 #define MODIFIER_KEY_POS 0
 #define SHIFT_KEY_CODE 0x02
@@ -69,11 +69,12 @@
 
 /* HIDs queue elements. */
 #define HIDS_QUEUE_SIZE 10
+
 #define CONSUMER_INPUT_REPORT_KEYS_MAX_LEN 1
  
 #define CONSUMER_INPUT_REP_KEYS_REF_ID 2
 
-#define CONSUMER_INPUT_REP_KEYS_REF_ID_2 3
+#define ADVANCE_CONSUMER_INPUT_REP_KEYS_REF_ID 3
 
 
 /* ********************* */
@@ -100,11 +101,30 @@
  */
 #define INPUT_REPORT_KEYS_MAX_LEN (1 + 1 + KEY_PRESS_MAX)
 
-// keypad
+/* keypad */ 
 #define LOG_LEVEL LOG_LEVEL_DBG
 #define key_press_detect DT_NODELABEL(sx1508)
 
-// keypad
+// Key codes
+#define ARROW_UP     0x52
+#define ARROW_DOWN   0x51
+#define ARROW_LEFT   0X50
+#define ARROW_RIGHT  0X4F
+#define ARROW_ENTER  0X28
+#define VOLUME_UP 	 0x01
+#define VOLUME_DOWN  0x02
+#define MUTE		 0x04
+#define HOME 		 0x08
+#define MENU 		 0x10
+#define PREV_TRACK   0x20
+#define NEXT_TRACK   0X40 
+#define BACK		 0X80
+#define POWER		 0X01
+#define PLAY_PAUSE	 0X02
+#define VOICE_CMD	 0X04
+#define RELEASED_KEY 0X00
+
+/* keypad */
 LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
 static const struct i2c_dt_spec i2c_node_2 = I2C_DT_SPEC_GET(DT_NODELABEL(sx1508));
 static struct device *dev_2 = DEVICE_DT_GET(DT_NODELABEL(sx1508));
@@ -133,6 +153,13 @@ enum
 	INPUT_REP_KEYS_IDX = 0
 };
 
+enum
+{
+	CONSUMER_INPUT_REP_KEYS_IDX =1,
+	ADV_CONSUMER_INPUT_REP_KEYS_IDX =2
+
+};
+
 /* HIDS instance. */
 BT_HIDS_DEF(hids_obj,
 			OUTPUT_REPORT_MAX_LEN,
@@ -158,40 +185,6 @@ static struct conn_mode
 	struct bt_conn *conn;
 	bool in_boot_mode;
 } conn_mode[CONFIG_BT_HIDS_MAX_CLIENT_COUNT];
-
-enum
-{
-	CONSUMER_INPUT_REP_KEYS_IDX =1,
-	CONSUMER_INPUT_REP_KEYS_2 = 2
-
-};
-
-// arrow
-static const uint8_t arrow_up[] = {0x52};
-
-static const uint8_t arrow_down[] = {0x51};
-
-static const uint8_t arrow_left[] = {0x50};
-
-static const uint8_t arrow_right[] = {0x4f};
-
-//enter
-
-static const uint8_t enter[] = {0x28};
-
-//
-static const uint8_t volumeup[] = {0x01};
-static const uint8_t volumedown[] = {0x02};
-static const uint8_t mute[] = {0x04};
-static const uint8_t home[] = {0x08};
-static const uint8_t menu[] = {0x10};
-static const uint8_t prev_track[] = {0x20};
-static const uint8_t next_track[] = {0x40};
-static const uint8_t ac_back[] = {0x80};
-static const uint8_t power[] = {0x01};
-static const uint8_t play_pause[] = {0x02};
-static const uint8_t voice_cmd[] = {0x04};
-static const uint8_t release_key[] = {0x00};
 
 /* Current report status
  */
@@ -564,7 +557,7 @@ static void hid_init(void)
 	hids_inp_rep =
 		&hids_init_obj.inp_rep_group_init.reports[INPUT_REP_KEYS_IDX];
 	hids_inp_rep->size = INPUT_REPORT_KEYS_MAX_LEN;
-	hids_inp_rep->id = INPUT_REP_KEYS_REF_ID;
+	hids_inp_rep->id = KEYPAD_INPUT_REP_KEYS_REF_ID;
 	hids_init_obj.inp_rep_group_init.cnt++;
 
 	hids_outp_rep =
@@ -581,9 +574,9 @@ static void hid_init(void)
 	hids_init_obj.inp_rep_group_init.cnt++;
 
 	hids_inp_rep =
-		&hids_init_obj.inp_rep_group_init.reports[CONSUMER_INPUT_REP_KEYS_2];
+		&hids_init_obj.inp_rep_group_init.reports[ADV_CONSUMER_INPUT_REP_KEYS_IDX];
 	hids_inp_rep->size = CONSUMER_INPUT_REPORT_KEYS_MAX_LEN;
-	hids_inp_rep->id = CONSUMER_INPUT_REP_KEYS_REF_ID_2;
+	hids_inp_rep->id = ADVANCE_CONSUMER_INPUT_REP_KEYS_REF_ID;
 	hids_init_obj.inp_rep_group_init.cnt++;
 
 	hids_init_obj.is_kb = true;
@@ -689,15 +682,15 @@ static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
  *
  *  @return 0 on success or negative error code.
  */
-static int key_report_con_send(const struct keyboard_state *state,
+static int keypad_key_report_con_send(const struct keyboard_state *state,
 							   bool boot_mode,
 							   struct bt_conn *conn)
 {
 	int err = 0;
-	uint8_t data[INPUT_REPORT_KEYS_MAX_LEN];
 	uint8_t *key_data;
 	const uint8_t *key_state;
 	size_t n;
+    uint8_t data[INPUT_REPORT_KEYS_MAX_LEN];
 
 	data[0] = state->ctrl_keys_state;
 	data[1] = 0;
@@ -708,7 +701,7 @@ static int key_report_con_send(const struct keyboard_state *state,
 	{
 		*key_data++ = *key_state++;
 	}
-	// data[0] = 0x10;
+
 	if (boot_mode)
 	{
 		err = bt_hids_boot_kb_inp_rep_send(&hids_obj, conn, data,
@@ -722,17 +715,14 @@ static int key_report_con_send(const struct keyboard_state *state,
 	}
 	return err;
 }
+
 //consumer page
-
-static int key_report_send_consumer(const struct keyboard_state *state,
+static int consumer_key_report_con_send(const struct keyboard_state *state,
 							   bool boot_mode,
-							   struct bt_conn *conn)
+							   struct bt_conn *conn, uint8_t rep_index)
 {
 	int err = 0;
 	uint8_t data[CONSUMER_INPUT_REPORT_KEYS_MAX_LEN];
-	uint8_t *key_data;
-	const uint8_t *key_state_1;
-	size_t n;
 
 	data[0] = state->ctrl_keys_state;
 
@@ -744,33 +734,7 @@ static int key_report_send_consumer(const struct keyboard_state *state,
 	else
 	{
 		err = bt_hids_inp_rep_send(&hids_obj, conn,
-								   CONSUMER_INPUT_REP_KEYS_IDX, &data,
-								   sizeof(data), NULL);
-	}
-	return err;
-}
-
-static int key_report_send_consumer_1(const struct keyboard_state *state,
-							   bool boot_mode,
-							   struct bt_conn *conn)
-{
-	int err = 0;
-	uint8_t data[CONSUMER_INPUT_REPORT_KEYS_MAX_LEN];
-	uint8_t *key_data;
-	const uint8_t *key_state_1;
-	size_t n;
-
-	data[0] = state->ctrl_keys_state;
-
-	if (boot_mode)
-	{
-		err = bt_hids_boot_kb_inp_rep_send(&hids_obj, conn, data,
-										   sizeof(data), NULL);
-	}
-	else
-	{
-		err = bt_hids_inp_rep_send(&hids_obj, conn,
-								   CONSUMER_INPUT_REP_KEYS_2, &data,
+								   rep_index, &data,
 								   sizeof(data), NULL);
 	}
 	return err;
@@ -783,7 +747,7 @@ static int key_report_send_consumer_1(const struct keyboard_state *state,
  *
  * @return 0 on success or negative error code.
  */
-static int key_report_send(void)
+static int key_report_send(uint8_t rep_index)
 {
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++)
 	{
@@ -791,9 +755,18 @@ static int key_report_send(void)
 		{
 			int err;
 
-			err = key_report_con_send(&hid_keyboard_state,
+			if(!rep_index) {
+
+			err = keypad_key_report_con_send(&hid_keyboard_state,
 									  conn_mode[i].in_boot_mode,
 									  conn_mode[i].conn);
+			}else {
+			
+			err = consumer_key_report_con_send(&hid_keyboard_state,
+									  conn_mode[i].in_boot_mode,
+									  conn_mode[i].conn,rep_index);
+
+			}
 			if (err)
 			{
 				printk("Key report send error: %d\n", err);
@@ -804,48 +777,6 @@ static int key_report_send(void)
 	return 0;
 }
 
-// consumer page
-static int key_report_send_1(void)
-{
-	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++)
-	{
-		if (conn_mode[i].conn)
-		{
-			int err;
-
-			err = key_report_send_consumer(&hid_keyboard_state,
-									  conn_mode[i].in_boot_mode,
-									  conn_mode[i].conn);
-			if (err)
-			{
-				printk("Key report send error: %d\n", err);
-				return err;
-			}
-		}
-	}
-	return 0;
-}
-
-static int key_report_send_2(void)
-{
-	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++)
-	{
-		if (conn_mode[i].conn)
-		{
-			int err;
-
-			err = key_report_send_consumer_1(&hid_keyboard_state,
-									  conn_mode[i].in_boot_mode,
-									  conn_mode[i].conn);
-			if (err)
-			{
-				printk("Key report send error: %d\n", err);
-				return err;
-			}
-		}
-	}
-	return 0;
-}
 /** @brief Change key code to ctrl code mask
  *
  *  Function changes the key code to the mask in the control code
@@ -886,7 +817,7 @@ static int hid_kbd_state_key_set(uint8_t key)
 	/* All slots busy */
 	return -EBUSY;
 }
-static int hid_kbd_state_key_set_cc(uint8_t key)
+static int hid_kbd_con_state_key_set(uint8_t key)
 {
 	uint8_t ctrl_mask = button_ctrl_code(key);
 
@@ -895,13 +826,8 @@ static int hid_kbd_state_key_set_cc(uint8_t key)
 		hid_keyboard_state.ctrl_keys_state |= ctrl_mask;
 		return 0;
 	}
-
- 
 		hid_keyboard_state.ctrl_keys_state = key;
-		
 		return 0;
-	
-
 	/* All slots busy */
 	return -EBUSY;
 }
@@ -937,9 +863,10 @@ static int hid_kbd_state_key_clear(uint8_t key)
  *
  *  @return 0 on success or negative error code.
  */
-static int hid_buttons_press(const uint8_t *keys, size_t cnt)
+static int hid_buttons_press(const uint8_t *keys, size_t cnt, uint8_t rep_index)
 {
-	while (cnt--)
+	if (rep_index == 0){
+	   while (cnt--)
 	{
 		int err;
 
@@ -950,8 +877,21 @@ static int hid_buttons_press(const uint8_t *keys, size_t cnt)
 			return err;
 		}
 	}
+	}
+	else{
+	  while (cnt--)
+	{
+		int err;
 
-	return key_report_send();
+		err = hid_kbd_con_state_key_set(*keys++);
+		if (err)
+		{
+			printk("Cannot clear selected key.\n");
+			return err;
+		}
+	}
+	}
+    return key_report_send(rep_index);
 }
 
 /** @brief Release the button and send report
@@ -962,7 +902,7 @@ static int hid_buttons_press(const uint8_t *keys, size_t cnt)
  *
  *  @return 0 on success or negative error code.
  */
-static int hid_buttons_release(const uint8_t *keys, size_t cnt)
+static int hid_buttons_release(const uint8_t *keys, size_t cnt, uint8_t rep_index)
 {
 	while (cnt--)
 	{
@@ -971,252 +911,34 @@ static int hid_buttons_release(const uint8_t *keys, size_t cnt)
 		err = hid_kbd_state_key_clear(*keys++);
 		if (err)
 		{
-			// printk("Cannot clear selected key.\n");
-			return err;
-		}
-	}
-
-	return key_report_send();
-}
-
-
-//consumer page
-
-static int hid_buttons_press_1(const uint8_t *keys, size_t cnt)
-{
-    	while (cnt--)
-	{
-		int err;
-
-		err = hid_kbd_state_key_set_cc(*keys++);
-		if (err)
-		{
 			printk("Cannot clear selected key.\n");
 			return err;
 		}
 	}
 
-	return key_report_send_1();
+	return key_report_send(rep_index);
 }
 
-static int hid_buttons_press_2(const uint8_t *keys, size_t cnt)
-{
-    	while (cnt--)
-	{
-		int err;
-
-		err = hid_kbd_state_key_set_cc(*keys++);
-		if (err)
-		{
-			printk("Cannot clear selected key.\n");
-			return err;
-		}
-	}
-
-	return key_report_send_2();
-}
-
-
-
-static void button_arrow_up(bool down)
+static void keypad_button_press(const uint8_t *keys, bool down, uint8_t rep_index)
 {
 	if (down)
 	{
-		hid_buttons_press(arrow_up, 1);
+		hid_buttons_press(keys , 1, rep_index);
 	}
 	else
 	{
-		hid_buttons_release(arrow_up, 1);
+		hid_buttons_release(keys, 1, rep_index);
 	}
 }
-static void button_arrow_down(bool down)
+static void consumer_button_press(const uint8_t *keys, bool down, uint8_t rep_index) 
 {
 	if (down)
 	{
-		hid_buttons_press(arrow_down, 1);
+		hid_buttons_press(keys, 1, rep_index);
 	}
 	else
 	{
-		hid_buttons_release(arrow_down, 1);
-	}
-}
-static void button_arrow_left(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press(arrow_left, 1);
-	}
-	else
-	{
-		hid_buttons_release(arrow_left, 1);
-	}
-}
-static void button_arrow_right(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press(arrow_right, 1);
-	}
-	else
-	{
-		hid_buttons_release(arrow_right, 1);
-	}
-}
-static void button_enter(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press(enter, 1);
-	}
-	else
-	{
-		hid_buttons_release(enter, 1);
-	}
-}
-
-// consumer page
-   
-static void consumer_volumeup_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_1(volumeup, 1);
-	}
-	else
-	{
-		hid_buttons_press_1(release_key, 1);
-
-	}
-}
-
-   static void consumer_volumedown_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_1(volumedown, 1);
-	}
-	else
-	{
-		hid_buttons_press_1(release_key, 1);
-
-	}
-}
-
-   static void consumer_mute_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_1(mute, 1);
-	}
-	else
-	{
-		hid_buttons_press_1(release_key, 1);
-
-	}
-}
-
-
-   static void consumer_nxttrack_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_1(next_track, 1);
-	}
-	else
-	{
-		hid_buttons_press_1(release_key, 1);
-
-	}
-}
-   static void consumer_prevtrack_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_1(prev_track, 1);
-	}
-	else
-	{
-		hid_buttons_press_1(release_key, 1);
-
-	}
-}
-
-static void consumer_home_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_1(home, 1);
-	}
-	else
-	{
-		hid_buttons_press_1(release_key, 1);
-
-	}
-}
-
-static void consumer_acback_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_1(ac_back, 1);
-	}
-	else
-	{
-		hid_buttons_press_1(release_key, 1);
-
-	}
-}
-
-static void consumer_menu_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_1(menu, 1);
-	}
-	else
-	{
-		hid_buttons_press_1(release_key, 1);
-
-	}
-}
-
-   static void consumer_play_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_2(play_pause, 1);
-	}
-	else
-	{
-		hid_buttons_press_2(release_key, 1);
-
-	}
-}
-
-
-static void consumer_power_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_2(power, 1);
-	}
-	else
-	{
-		hid_buttons_press_2(release_key, 1);
-
-	}
-}
-
-static void consumer_voicecmd_changed(bool down)
-{
-	if (down)
-	{
-		hid_buttons_press_2(voice_cmd, 1);
-	}
-	else
-	{
-		hid_buttons_press_2(release_key, 1);
-
+		hid_buttons_press(RELEASED_KEY, 1, rep_index);
 	}
 }
 
@@ -1251,18 +973,6 @@ static void num_comp_reply(bool accept)
 	}
 }
 
-
-static void configure_gpio(void)
-{
-	int err;
-
-	err = dk_leds_init();
-	if (err)
-	{
-		printk("Cannot init LEDs (err: %d)\n", err);
-	}
-}
-
 static void bas_notify(void)
 {
 	uint8_t battery_level = bt_bas_get_battery_level();
@@ -1282,7 +992,12 @@ static void bas_notify(void)
 void keyscan_callback(const struct device *dev, uint32_t row,
 					  uint32_t column, bool pressed)
 {
+	printk("row %d column %d pressed %d\n",row,column,pressed);
 	static bool pairing_button_pressed;
+	uint8_t keycode = 0;
+    const uint8_t * key_code = &keycode;
+	/** Report index defined in the HIDS Report Map. */
+	uint8_t report_idx = 0xff;
 	
 	if (k_msgq_num_used_get(&mitm_queue))
 	{
@@ -1298,89 +1013,118 @@ void keyscan_callback(const struct device *dev, uint32_t row,
 			num_comp_reply(false);
 			return;
 		}
+	}
 
+	if(((row == 4) && (column == 0)) || ((row == 4) && (column == 1))  || ((row == 4) && (column == 2))
+	   || ((row == 5) && (column == 2))  || ((row == 5) && (column == 0))) 
+	{
+
+	report_idx = INPUT_REP_KEYS_IDX;
+
+    if ((row == 4) && (column == 0))//sw2
+	{
+		keycode = ARROW_UP;
+	}
+
+	else if ((row == 5) && (column == 0))//sw6
+	{
+		keycode = ARROW_RIGHT;
+	}
+
+	else if ((row == 5) && (column == 2))//sw8
+	{
+		keycode = ARROW_DOWN;
+	}
+
+	else if ((row == 4) && (column == 1))//sw3
+	{
+		keycode = ARROW_LEFT;
 	}
 	
-	if ((row == 4) && (column == 0) & KEY_TEXT_MASK)//sw2
+	else if ((row == 4) && (column == 2))//sw4
 	{
-
-		button_arrow_up(pressed);
-		k_sleep(K_MSEC(1));
-		button_arrow_up(false);
+		keycode = ARROW_ENTER;
 	}
 
-	if ((row == 4) && (column == 1) & KEY_TEXT_MASK)//sw3
+	else 
 	{
-
-		button_arrow_left(pressed);
-		k_sleep(K_MSEC(1));
-		button_arrow_left(false);
+        //nothing
 	}
 
+	keypad_button_press(key_code, pressed, report_idx);
+
+	}
+
+	else{
+
+	if(((row == 4) && (column == 3)) || ((row == 5) && (column == 1)) || ((row == 6) && (column == 0)) || ((row == 6) && (column == 1)) || ((row == 6) && (column == 3)) || ((row == 7) && (column == 0)) || ((row == 7) && (column == 1))
+		|| ((row == 7) && (column == 2) )) 
+	{
+
+	report_idx = CONSUMER_INPUT_REP_KEYS_IDX;
 	
-	if ((row == 4) && (column == 2) & KEY_TEXT_MASK)//sw4
+	if ((row == 4) && (column == 3))//sw5
 	{
-		button_enter(pressed);
-		k_sleep(K_MSEC(1));
-		button_enter(false);
+		keycode = MUTE;   
+	}
+	else if ((row == 5) && (column == 1))//sw7
+	{
+		keycode = VOLUME_UP;   
+	}
+	else if ((row == 6) && (column == 0))//sw10
+	{
+		keycode = MENU;   
+	}
+	else if ((row == 6) && (column == 1))//sw11
+	{
+		keycode = HOME;   
+	}
+	else if ((row == 6) && (column == 3))//sw13
+	{
+		keycode = NEXT_TRACK;   
+	}
+	else if ((row == 7) && (column == 0))//sw14
+	{
+		keycode = VOLUME_DOWN;   
+	}
+	else if ((row == 7) && (column == 1))//sw15
+	{
+		keycode = PREV_TRACK;   
+	}
+	else if ((row == 7) && (column == 2))//sw16
+	{
+		keycode = BACK;   
 	}
 
-	if ((row == 4) && (column == 3) & KEY_TEXT_MASK)//sw5
+   }
+
+	else if(((row == 5) && (column == 3)) || ((row == 6) && (column == 2)) || ((row == 7) && (column == 3)))
 	{
-		consumer_mute_changed(pressed);   
-	}
-	if ((row == 5) && (column == 0) & KEY_TEXT_MASK)//sw6
+	
+	report_idx = ADV_CONSUMER_INPUT_REP_KEYS_IDX;
+
+    if ((row == 5) && (column == 3))//sw9
 	{
-		button_arrow_right(pressed);
-		k_sleep(K_MSEC(1));
-		button_arrow_right(false);
+		keycode = POWER;   
 	}
-	if ((row == 5) && (column == 1) & KEY_TEXT_MASK)//sw7
+	else if ((row == 6) && (column == 2))//sw12
 	{
-		consumer_volumeup_changed(pressed);
+		keycode = PLAY_PAUSE;   
 	}
-	if ((row == 5) && (column == 2) & KEY_TEXT_MASK)//sw8
-	{
-		button_arrow_down(pressed);
-		k_sleep(K_MSEC(1));
-		button_arrow_down(false);
-	}
-	if ((row == 5) && (column == 3) & KEY_TEXT_MASK)//sw9
-	{
-		consumer_power_changed(pressed);
-	}
-	if ((row == 6) && (column == 0) & KEY_TEXT_MASK)//sw10
-	{
-		consumer_menu_changed(pressed);
-	}
-	if ((row == 6) && (column == 1) & KEY_TEXT_MASK)//sw11
-	{
-		consumer_home_changed(pressed);
-	}
-	if ((row == 6) && (column == 2) & KEY_TEXT_MASK)//sw12
-	{
-		consumer_play_changed(pressed);
-	}
-	if ((row == 6) && (column == 3) & KEY_TEXT_MASK)//sw13
-	{
-		consumer_nxttrack_changed(pressed);
-	}
-	if ((row == 7) && (column == 0) & KEY_TEXT_MASK)//sw14
-	{
-		consumer_volumedown_changed(pressed);
-	}
-	if ((row == 7) && (column == 1) & KEY_TEXT_MASK)//sw15
-	{
-		consumer_prevtrack_changed(pressed);
-	}
-	if ((row == 7) && (column == 2) & KEY_TEXT_MASK)//sw16
-	{
-		consumer_acback_changed(pressed);
-	}
-	if ((row == 7) && (column == 3) & KEY_TEXT_MASK)//sw17
+	else if ((row == 7) && (column == 3))//sw17
 	{	
-		consumer_voicecmd_changed(pressed);
+		keycode = VOICE_CMD;   
 	}
+
+	}
+
+	else {
+		//nothing 
+	}
+
+	consumer_button_press(key_code, pressed, report_idx);
+
+}
 
 }
 
@@ -1388,8 +1132,6 @@ int main(void)
 {
 	int err;
 	int blink_status = 0;
-
-	configure_gpio();
 
 	if (!device_is_ready(i2c_node_2.bus))
 	{
@@ -1430,7 +1172,7 @@ int main(void)
 		return 0;
 	}
 
-	printk("Bluetooth initialized\n");
+	printk("Bluetooth initialized successfully\n");
 
 	if (IS_ENABLED(CONFIG_SETTINGS))
 	{
@@ -1451,9 +1193,10 @@ int main(void)
 		{
 			dk_set_led_off(ADV_STATUS_LED);
 		}
-		k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
-		/* Battery level simulation */
-		bas_notify();
 
+		k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
+
+		/* Battery level simulation */
+		// bas_notify();
 	}
 }
